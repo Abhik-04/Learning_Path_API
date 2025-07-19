@@ -4,7 +4,9 @@ A Flask web application that generates a personalized learning path for users ba
 ## Directory Structure
 .
 ├── app.py
+
 ├── database.py
+
 ├── models.py
 ├── populate_db.py
 ├── requirements.txt

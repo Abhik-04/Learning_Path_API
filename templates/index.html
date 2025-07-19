@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learner Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Learner Dashboard</h1>
+            <p>Select a learner to see their eligible next steps.</p>
+        </header>
+
+        <main>
+            <!-- creates dropdown for the learners -->
+            <div class="controls">
+                <label for="learner-select">Select a Learner:</label>
+                <select id="learner-select">
+                    {% for id in learner_ids %}
+                        <option value="{{ id }}">Learner {{ id }}</option>
+                    {% endfor %}
+                </select>
+                <!-- button to display all the eligible topics of a learner -->
+                <button id="fetch-button">Show Eligible Topics</button>
+            </div>
+
+            <div id="results-container">
+                <p class="placeholder-message">Eligible topics will be shown here...</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('fetch-button').addEventListener('click', async () => {
+            const learnerId = document.getElementById('learner-select').value;
+            const resultsContainer = document.getElementById('results-container');
+            const button = document.getElementById('fetch-button');
+
+            resultsContainer.innerHTML = '<p class="placeholder-message">Fetching...</p>';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`/api/learning-path/${learnerId}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to fetch data.');
+                
+                displayEligibleTopics(data.eligible_topics);
+            } catch (error) {
+                resultsContainer.innerHTML = `<p class="error-message">Error: ${error.message}</p>`;
+            } finally {
+                button.disabled = false;
+            }
+        });
+        // unction to display eligible topics in a table format
+        function displayEligibleTopics(courses) {
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '';
+
+            if (!courses || courses.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-topics-message">🎉 Great job! No new eligible courses at this time.</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'results-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Topic Title</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+            `;
+
+            const tbody = document.createElement('tbody');
+            courses.forEach(course => {
+                const row = tbody.insertRow();
+                
+                // Topic Title
+                row.insertCell().textContent = course.title;
+
+                // Status Cell
+                const statusCell = row.insertCell();
+                statusCell.innerHTML = course.status;
+
+                // Score Cell
+                const scoreCell = row.insertCell();
+                scoreCell.innerHTML = (course.status === 'In Progress') ? `${course.score}%` : '<span class="no-prereq">-</span>';
+            });
+
+            table.appendChild(tbody);
+            resultsContainer.appendChild(table);
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- learning_path_api/templates/index.html -->
+ 
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Learning Path Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Interactive Learning Path Manager</h1>
+            <p>Select a learner to view and update their eligible courses.</p>
+        </header>
+
+        <main>
+            <div class="controls top-controls">
+                <form method="GET" action="{{ url_for('index') }}" class="learner-select-form">
+                    <label for="learner-select">Select a Learner:</label>
+                    <select id="learner-select" name="learner_id" onchange="this.form.submit()">
+                        <option value="">-- Select --</option>
+                        {% for id in all_learner_ids %}
+                        <option value="{{ id }}" {% if id == selected_learner_id %}selected{% endif %}>
+                            Learner {{ id }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <button class="add-learner-btn" onclick="toggleAddLearnerForm()">+ Add Learner Progress</button>
+            </div>
+
+            <div id="add-learner-container" class="add-learner-container" style="display: none;">
+                <form method="POST" action="{{ url_for('index') }}" class="add-learner-form">
+                    <input type="hidden" name="action" value="add_learner_progress">
+                    <input type="number" name="new_learner_id" placeholder="Enter Learner ID" required>
+                    <select name="topic_id" required>
+                        <option value="">-- Select Topic --</option>
+                        {% for topic in all_topics %}
+                        <option value="{{ topic.id }}">{{ topic.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="status" required>
+                        {% for status in statuses %}
+                        <option value="{{ status }}">{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Add Progress</button>
+                </form>
+            </div>
+
+            <div id="results-container">
+                {% if selected_learner_id %}
+                    {% if eligible_courses %}
+                    <div class="course-list">
+                        <div class="course-list-header">
+                            <div>Topic Title</div>
+                            <div>Status</div>
+                            <div>Score</div>
+                            <div>Action</div>
+                        </div>
+                        {% for course in eligible_courses %}
+                        <form method="POST" action="{{ url_for('index') }}" class="course-list-row">
+                            <input type="hidden" name="action" value="update">
+                            <input type="hidden" name="learner_id" value="{{ selected_learner_id }}">
+                            <input type="hidden" name="topic_id" value="{{ course.id }}">
+                            
+                            <div class="course-title">{{ course.title }}</div>
+                            <div>
+                                <select name="status">
+                                    {% for status in statuses %}
+                                    <option value="{{ status }}" {% if status == course.status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <input type="number" name="score" value="{{ course.score }}" min="0" max="100" class="score-input">
+                            </div>
+                            <div>
+                                <button type="submit" class="update-btn">Update</button>
+                            </div>
+                        </form>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="no-topics-message">🎉 All eligible courses are completed for this learner!</p>
+                    {% endif %}
+                {% else %}
+                <p class="placeholder-message">Please select a learner to begin.</p>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleAddLearnerForm() {
+            const container = document.getElementById('add-learner-container');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html> -->

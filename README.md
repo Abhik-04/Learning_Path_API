@@ -14,7 +14,9 @@ A Flask web application that generates a personalized learning path for users ba
 ├─ requirements.txt
 
 ├─ static/
+
 │   └─ style.css
 
 └─ templates/
-    └─ index.html
+
+│   └─ index.html

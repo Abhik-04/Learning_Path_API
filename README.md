@@ -17,6 +17,6 @@ A Flask web application that generates a personalized learning path for users ba
 
    └─ style.css
 
-└─ templates/
+├─ templates/
 
    └─ index.html
